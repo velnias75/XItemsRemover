@@ -18,6 +18,14 @@
  */
 package ru.xezard.items.remover.data;
 
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.atomic.AtomicInteger;
+import java.util.logging.Logger;
+
 import org.bukkit.Bukkit;
 import org.bukkit.Material;
 import org.bukkit.configuration.ConfigurationSection;
@@ -26,18 +34,18 @@ import org.bukkit.entity.Item;
 import org.bukkit.inventory.ItemStack;
 import org.bukkit.inventory.meta.ItemMeta;
 import org.bukkit.scheduler.BukkitTask;
+
+import net.kyori.adventure.text.Component;
+import net.kyori.adventure.text.TextComponent.Builder;
 import ru.xezard.items.remover.ItemsRemoverPlugin;
 import ru.xezard.items.remover.configurations.Configurations;
 import ru.xezard.items.remover.utils.Chat;
 import ru.xezard.items.remover.utils.Materials;
 
-import java.util.*;
-import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.atomic.AtomicInteger;
-import java.util.logging.Logger;
-
 public class ItemsManager
 {
+    private final static String TRANSLATED_MATERIAL_NAME = "{translated_material_name}";
+
     private List<Map<Item, Long>> items = new ArrayList<Map<Item, Long>> (20)
     {{
         for (int i = 0; i < 20; i++)
@@ -128,10 +136,9 @@ public class ItemsManager
 
             DropData data = this.dropData.get(material);
 
-            String materialName = Materials.toString(itemStack.getType()),
-                   displayName = itemMeta.hasDisplayName() ? itemMeta.getDisplayName() :
-                           data == null ? materialName : data.getCustomName() == null ?
-                                   materialName : data.getCustomName();
+            String displayName = itemMeta.hasDisplayName() ? itemMeta.getDisplayName() :
+                           data == null ? TRANSLATED_MATERIAL_NAME : data.getCustomName() == null ?
+                        		   TRANSLATED_MATERIAL_NAME : data.getCustomName();
 
             long time = entry.getValue();
 
@@ -139,10 +146,33 @@ public class ItemsManager
             {
                 entry.setValue(time - 1);
 
-                item.setCustomName(Chat.colorize(this.configurations.get("config.yml").getString("Items.Display-name-format")
+                final String base = Chat.colorize(this.configurations.get("config.yml").getString("Items.Display-name-format")
                         .replace("{time}", Long.toString(time))
-                        .replace("{amount}", Integer.toString(itemStack.getAmount()))
-                        .replace("{display_name}", displayName)));
+                        .replace("{amount}", Integer.toString(itemStack.getAmount())));
+
+                final int dn_idx = base.indexOf("{display_name}");
+                final Builder customNameBuilder;
+
+                if(dn_idx != -1) {
+
+                	customNameBuilder = Component.text().content(base.substring(0, dn_idx));
+
+                	final int tmn_idx = displayName.indexOf(TRANSLATED_MATERIAL_NAME);
+
+                	if(tmn_idx != -1) {
+                		customNameBuilder.append(Component.translatable(material));
+                	} else {
+                		customNameBuilder.append(Component.text(displayName));
+                	}
+
+                	customNameBuilder.append(Component.text(base.substring(dn_idx + 14)));
+
+                } else {
+                	customNameBuilder = Component.text().content(base);
+                }
+
+                item.customName(customNameBuilder.build());
+
                 continue;
             }
 
