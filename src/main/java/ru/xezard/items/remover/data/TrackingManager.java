@@ -188,7 +188,7 @@ public class TrackingManager
 
                 final int dn_idx = base.indexOf("{display_name}");
                 final Builder customNameBuilder;
-                
+
                 if(entity instanceof Item && dn_idx != -1) {
 
                 	customNameBuilder = Component.text().content(base.substring(0, dn_idx));
